@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dal Defteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F2EC;
+    --paper-2:#FBFAF6;
+    --ink:#243039;
+    --muted:#6B7680;
+    --line:#DCDBD1;
+    --temel:#B23A2E;   /* kök / bloklayıcı  */
+    --merak:#6B4E9E;   /* yan dal          */
+    --ek:#3F7A5A;      /* besleyici        */
+    --temel-bg:#F6E4E0;
+    --merak-bg:#EAE4F2;
+    --ek-bg:#E1EEE6;
+    --shadow:0 1px 2px rgba(36,48,57,.05),0 6px 20px rgba(36,48,57,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    padding:0 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 18px}
+
+  /* ---- Header ---- */
+  header{padding:30px 0 18px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .mark{
+    font-family:'Fraunces',Georgia,serif;
+    font-weight:600;font-size:30px;letter-spacing:-.02em;
+    line-height:1;
+  }
+  .mark .leaf{color:var(--ek)}
+  .tag{font-size:12px;color:var(--muted);letter-spacing:.02em}
+  .counts{
+    margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;
+    font-size:13px;color:var(--muted);
+  }
+  .counts b{color:var(--ink);font-weight:600}
+  .counts .warn b{color:var(--temel)}
+
+  /* ---- Capture ---- */
+  .capture{
+    background:var(--paper-2);border:1px solid var(--line);
+    border-radius:16px;padding:14px;margin-top:16px;box-shadow:var(--shadow);
+  }
+  .capture input[type=text]{
+    width:100%;border:none;background:transparent;color:var(--ink);
+    font-family:inherit;font-size:16px;padding:6px 2px;
+  }
+  .capture input::placeholder{color:#9AA2A8}
+  .capture input:focus{outline:none}
+  .ctx{
+    width:100%;border:none;background:transparent;color:var(--muted);
+    font-family:inherit;font-size:13.5px;padding:2px 2px 6px;
+    border-top:1px dashed var(--line);margin-top:6px;
+  }
+  .ctx:focus{outline:none;color:var(--ink)}
+  .cap-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .types{display:flex;gap:6px}
+  .type-btn{
+    font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;
+    border:1px solid var(--line);background:transparent;color:var(--muted);
+    padding:6px 11px;border-radius:999px;transition:all .12s ease;
+  }
+  .type-btn[data-t=temel].on{background:var(--temel-bg);border-color:var(--temel);color:var(--temel)}
+  .type-btn[data-t=merak].on{background:var(--merak-bg);border-color:var(--merak);color:var(--merak)}
+  .type-btn[data-t=ek].on{background:var(--ek-bg);border-color:var(--ek);color:var(--ek)}
+  .add{
+    margin-left:auto;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    background:var(--ink);color:var(--paper-2);border:none;
+    padding:8px 16px;border-radius:999px;transition:transform .08s ease,opacity .12s;
+  }
+  .add:active{transform:scale(.96)}
+  .add:disabled{opacity:.4;cursor:default}
+
+  /* ---- Filters ---- */
+  .filters{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap;align-items:center}
+  .f{
+    font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--muted);
+    border:none;background:transparent;padding:5px 9px;border-radius:8px;
+  }
+  .f.on{background:#E7E6DD;color:var(--ink);font-weight:600}
+  .fsep{width:1px;height:16px;background:var(--line);margin:0 2px}
+
+  /* ---- Section labels ---- */
+  .sec{
+    font-family:'Fraunces',serif;font-size:13px;font-weight:600;
+    color:var(--temel);margin:22px 0 8px;letter-spacing:.01em;
+    display:flex;align-items:center;gap:7px;
+  }
+  .sec.rest{color:var(--muted)}
+  .sec .kbadge{
+    font-family:'Inter';font-size:10px;font-weight:600;color:#fff;background:var(--temel);
+    padding:1px 6px;border-radius:99px;letter-spacing:.03em;
+  }
+
+  /* ---- Card ---- */
+  .card{
+    background:var(--paper-2);border:1px solid var(--line);border-radius:14px;
+    padding:13px 14px;margin-bottom:9px;box-shadow:var(--shadow);
+    animation:pop .18s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .card.block{border-left:3px solid var(--temel)}
+  .card.doing{border-left:3px solid var(--merak)}
+  .card.done{opacity:.55}
+  .c-top{display:flex;align-items:flex-start;gap:9px}
+  .chip{
+    flex:none;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;
+    letter-spacing:.02em;margin-top:2px;
+  }
+  .chip.temel{background:var(--temel-bg);color:var(--temel)}
+  .chip.merak{background:var(--merak-bg);color:var(--merak)}
+  .chip.ek{background:var(--ek-bg);color:var(--ek)}
+  .c-title{font-size:15.5px;font-weight:500;flex:1;word-break:break-word}
+  .card.done .c-title{text-decoration:line-through}
+  .c-ctx{
+    font-size:12.5px;color:var(--muted);margin-top:5px;padding-left:2px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .c-ctx .branch{color:var(--line);font-size:14px;flex:none}
+  .c-ctx .branch b{color:var(--muted);font-weight:400}
+  .prog{display:flex;align-items:center;gap:9px;margin-top:10px}
+  .pbar{
+    flex:1;height:7px;background:#E7E6DD;border-radius:99px;overflow:hidden;
+  }
+  .pbar span{
+    display:block;height:100%;background:var(--merak);border-radius:99px;
+    transition:width .25s ease;
+  }
+  .ppct{font-size:12px;font-weight:600;color:var(--merak);flex:none;min-width:34px;text-align:right}
+  .c-meta{font-size:11px;color:#9AA2A8;margin-top:6px}
+  .c-actions{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+  .act{
+    font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;
+    border:1px solid var(--line);background:transparent;color:var(--muted);
+    padding:5px 11px;border-radius:8px;transition:all .12s;
+  }
+  .act:hover{border-color:var(--muted);color:var(--ink)}
+  .act.go{color:var(--merak);border-color:var(--merak-bg)}
+  .act.close{color:var(--ek);border-color:var(--ek-bg)}
+  .act.del{margin-left:auto;color:#B9857E}
+  .act.del:hover{color:var(--temel);border-color:var(--temel-bg)}
+
+  /* ---- Empty ---- */
+  .empty{
+    text-align:center;padding:46px 20px;color:var(--muted);
+  }
+  .empty .big{font-family:'Fraunces',serif;font-size:19px;color:var(--ink);margin-bottom:6px}
+  .empty p{font-size:13.5px;max-width:300px;margin:0 auto}
+
+  footer{padding:16px 0 34px;text-align:center;font-size:11px;color:#A7ACA6}
+  .backup{display:flex;gap:8px;justify-content:center;margin-top:30px}
+  .bk{
+    font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;
+    border:1px solid var(--line);background:var(--paper-2);color:var(--muted);
+    padding:8px 16px;border-radius:99px;transition:all .12s;
+  }
+  .bk:hover{border-color:var(--muted);color:var(--ink)}
+  .bk:active{transform:scale(.97)}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(36,48,57,.38);
+    display:flex;align-items:flex-end;justify-content:center;z-index:50;
+    padding:0;
+  }
+  .overlay[hidden]{display:none}
+  .modal{
+    background:var(--paper-2);width:100%;max-width:640px;
+    border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 40px rgba(36,48,57,.2);animation:up .2s ease;
+  }
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .m-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+  .m-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600}
+  .m-x{border:none;background:none;color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer;padding:4px}
+  .m-note{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.45}
+  .m-text{width:100%}
+  #mText{
+    width:100%;height:120px;resize:none;font-family:ui-monospace,Menlo,monospace;
+    font-size:12px;color:var(--ink);background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;padding:10px;line-height:1.4;
+  }
+  #mText:focus{outline:none;border-color:var(--muted)}
+  .m-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .m-btn{
+    flex:1;min-width:120px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    border:none;padding:11px 14px;border-radius:12px;transition:transform .08s,opacity .12s;
+  }
+  .m-btn:active{transform:scale(.97)}
+  .m-btn.primary{background:var(--ink);color:var(--paper-2)}
+  .m-btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  footer b{color:var(--muted);font-weight:500}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="mark">Dal <span class="leaf">Defteri</span></span>
+    </div>
+    <div class="tag">çalışırken açılan dalları kaybetmeden takip et</div>
+    <div class="counts" id="counts"></div>
+  </header>
+
+  <div class="capture">
+    <input type="text" id="title" placeholder="Aklına takılan dal… (ör. orbital hibritleşme tam olarak nasıl?)" autocomplete="off">
+    <input type="text" id="ctx" class="ctx" placeholder="↳ neyi çalışırken çıktı? (bağlam — isteğe bağlı)" autocomplete="off">
+    <div class="cap-row">
+      <div class="types" id="types">
+        <button class="type-btn" data-t="temel">Temel · kök</button>
+        <button class="type-btn on" data-t="merak">Merak</button>
+        <button class="type-btn" data-t="ek">Ek</button>
+      </div>
+      <button class="add" id="add" disabled>Ekle</button>
+    </div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="f on" data-f="acik">Açık</button>
+    <button class="f" data-f="kapanan">Kapananlar</button>
+    <button class="f" data-f="hepsi">Hepsi</button>
+    <span class="fsep"></span>
+    <button class="f" data-ft="temel">Temel</button>
+    <button class="f" data-ft="merak">Merak</button>
+    <button class="f" data-ft="ek">Ek</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="backup">
+    <button class="bk" id="export">↓ Yedekle</button>
+    <button class="bk" id="importBtn">↑ Geri yükle</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+
+  <footer>veriler yalnızca bu cihazda saklanır · düzenli yedekle</footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal">
+    <div class="m-head">
+      <span class="m-title" id="mTitle">Yedek</span>
+      <button class="m-x" id="mClose">Kapat</button>
+    </div>
+    <p class="m-note" id="mNote"></p>
+    <textarea id="mText" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <div class="m-actions" id="mActions"></div>
+  </div>
+</div>
+
+<script>
+const KEY = 'dal-defteri-v1';
+const TYPE_LABEL = {temel:'Temel', merak:'Merak', ek:'Ek'};
+let items = [];
+let pickedType = 'merak';
+let statusFilter = 'acik';   // acik | kapanan | hepsi
+let typeFilter = null;        // null | temel | merak | ek
+
+/* Saklama: Claude içindeyken kalıcı depo (window.storage),
+   tarayıcıya kaydedince cihaz hafızası (localStorage). */
+const hasCloud = typeof window !== 'undefined' && window.storage
+  && typeof window.storage.get === 'function';
+
+async function load(){
+  if(hasCloud){
+    try{ const r = await window.storage.get('items'); return r && r.value ? JSON.parse(r.value) : []; }
+    catch(e){ return []; }   // anahtar yoksa hata fırlatır → boş kabul et
+  }
+  try{ return JSON.parse(localStorage.getItem(KEY)) || []; }
+  catch(e){ return []; }
+}
+async function save(){
+  const txt = JSON.stringify(items);
+  if(hasCloud){
+    try{ await window.storage.set('items', txt); return; }catch(e){}
+  }
+  try{ localStorage.setItem(KEY, txt); }catch(e){}
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function fmtDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+}
+
+/* ---- capture ---- */
+const titleEl = document.getElementById('title');
+const ctxEl = document.getElementById('ctx');
+const addBtn = document.getElementById('add');
+
+titleEl.addEventListener('input', ()=>{ addBtn.disabled = titleEl.value.trim()===''; });
+titleEl.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addItem(); }});
+ctxEl.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addItem(); }});
+
+document.getElementById('types').addEventListener('click', e=>{
+  const b = e.target.closest('.type-btn'); if(!b) return;
+  pickedType = b.dataset.t;
+  document.querySelectorAll('.type-btn').forEach(x=>x.classList.toggle('on', x===b));
+});
+
+addBtn.addEventListener('click', addItem);
+function addItem(){
+  const t = titleEl.value.trim(); if(!t) return;
+  items.unshift({
+    id: uid(), title:t, ctx:ctxEl.value.trim(),
+    type:pickedType, status:'acik', created:Date.now()
+  });
+  save();
+  titleEl.value=''; ctxEl.value=''; addBtn.disabled=true; titleEl.focus();
+  render();
+}
+
+/* ---- filters ---- */
+document.getElementById('filters').addEventListener('click', e=>{
+  const b = e.target.closest('.f'); if(!b) return;
+  if(b.dataset.f){
+    statusFilter = b.dataset.f;
+    document.querySelectorAll('.f[data-f]').forEach(x=>x.classList.toggle('on', x===b));
+  } else if(b.dataset.ft){
+    typeFilter = (typeFilter===b.dataset.ft) ? null : b.dataset.ft;
+    document.querySelectorAll('.f[data-ft]').forEach(x=>x.classList.toggle('on', x.dataset.ft===typeFilter));
+  }
+  render();
+});
+
+/* ---- actions ---- */
+function setStatus(id, s){
+  const it=items.find(x=>x.id===id); if(!it) return;
+  if(s==='calisiyor' && (it.status==='kapandi' || it.progress==null)) it.progress=0;
+  it.status=s; save(); render();
+}
+function advance(id){
+  const it=items.find(x=>x.id===id); if(!it) return;
+  const p=(it.progress||0)+25;
+  if(p>=100){ it.progress=100; it.status='kapandi'; }
+  else { it.progress=p; }
+  save(); render();
+}
+function del(id){ items=items.filter(x=>x.id!==id); save(); render(); }
+
+/* ---- render ---- */
+function passesFilter(it){
+  if(statusFilter==='acik' && it.status==='kapandi') return false;
+  if(statusFilter==='kapanan' && it.status!=='kapandi') return false;
+  if(typeFilter && it.type!==typeFilter) return false;
+  return true;
+}
+
+function cardHTML(it){
+  const cls = it.status==='kapandi' ? 'done'
+            : it.status==='calisiyor' ? 'doing'
+            : (it.type==='temel' ? 'block' : '');
+  const ctx = it.ctx
+    ? `<div class="c-ctx"><span class="branch">↳</span><span><b>${esc(it.ctx)}</b> çalışırken</span></div>` : '';
+  const p = it.progress || 0;
+  let prog = '';
+  let acts = '';
+  if(it.status==='acik'){
+    acts = `<button class="act go" data-a="calisiyor">Başladım</button>
+            <button class="act close" data-a="kapandi">Kapat</button>`;
+  } else if(it.status==='calisiyor'){
+    prog = `<div class="prog">
+        <div class="pbar"><span style="width:${p}%"></span></div>
+        <span class="ppct">%${p}</span>
+      </div>`;
+    acts = `<button class="act go" data-a="ilerle">İlerledim +25</button>
+            <button class="act" data-a="acik">Geri al</button>`;
+  } else {
+    acts = `<button class="act" data-a="calisiyor">Yeniden aç</button>`;
+  }
+  const doneMeta = it.status==='kapandi' && p>=100 ? ' · tamamlandı ✓'
+                 : it.status==='calisiyor' ? ' · çalışılıyor' : '';
+  return `<div class="card ${cls}" data-id="${it.id}">
+    <div class="c-top">
+      <span class="chip ${it.type}">${TYPE_LABEL[it.type]}</span>
+      <span class="c-title">${esc(it.title)}</span>
+    </div>
+    ${ctx}
+    ${prog}
+    <div class="c-meta">${fmtDate(it.created)}${doneMeta}</div>
+    <div class="c-actions">${acts}<button class="act del" data-a="del">Sil</button></div>
+  </div>`;
+}
+
+function esc(s){ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render(){
+  renderCounts();
+  const list = document.getElementById('list');
+  const shown = items.filter(passesFilter);
+
+  if(shown.length===0){
+    list.innerHTML = `<div class="empty">
+      <div class="big">${items.length===0?'Defter boş':'Bu filtrede dal yok'}</div>
+      <p>${items.length===0
+        ? 'Çalışırken aklına bir soru ya da eksik takıldığında buraya tek satır bırak, sonra çalışmana dön.'
+        : 'Filtreyi değiştir ya da yeni bir dal ekle.'}</p>
+    </div>`;
+    return;
+  }
+
+  // kök blokları önce (yalnızca açık görünümde ayrı başlıkla)
+  let html='';
+  if(statusFilter==='acik' && !typeFilter){
+    const blockers = shown.filter(i=>i.type==='temel' && i.status!=='kapandi');
+    const rest = shown.filter(i=>!(i.type==='temel' && i.status!=='kapandi'));
+    if(blockers.length){
+      html += `<div class="sec"><span class="kbadge">KÖK</span> Önce bunlar çözülmeli</div>`;
+      html += blockers.map(cardHTML).join('');
+    }
+    if(rest.length){
+      if(blockers.length) html += `<div class="sec rest">Diğer dallar</div>`;
+      html += rest.map(cardHTML).join('');
+    }
+  } else {
+    html = shown.map(cardHTML).join('');
+  }
+  list.innerHTML = html;
+}
+
+document.getElementById('list').addEventListener('click', e=>{
+  const b = e.target.closest('.act'); if(!b) return;
+  const id = b.closest('.card').dataset.id;
+  const a = b.dataset.a;
+  if(a==='del'){ del(id); }
+  else if(a==='ilerle'){ advance(id); }
+  else { setStatus(id, a); }
+});
+
+function renderCounts(){
+  const open = items.filter(i=>i.status!=='kapandi');
+  const roots = open.filter(i=>i.type==='temel').length;
+  const doing = items.filter(i=>i.status==='calisiyor').length;
+  const el = document.getElementById('counts');
+  el.innerHTML =
+    `<span><b>${open.length}</b> açık dal</span>` +
+    (roots? `<span class="warn"><b>${roots}</b> kök bekliyor</span>`:'') +
+    (doing? `<span><b>${doing}</b> çalışılıyor</span>`:'');
+}
+
+/* ---- yedekle / geri yükle (iOS uyumlu) ---- */
+const overlay = document.getElementById('overlay');
+const mTitle = document.getElementById('mTitle');
+const mNote  = document.getElementById('mNote');
+const mText  = document.getElementById('mText');
+const mActions = document.getElementById('mActions');
+
+function closeModal(){ overlay.hidden = true; mActions.innerHTML=''; mText.value=''; }
+document.getElementById('mClose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+
+function backupName(){ return `dal-defteri-yedek-${new Date().toISOString().slice(0,10)}.json`; }
+
+async function copyText(){
+  try{ await navigator.clipboard.writeText(mText.value); return true; }
+  catch(e){
+    mText.focus(); mText.setSelectionRange(0, mText.value.length);
+    try{ return document.execCommand('copy'); }catch(_){ return false; }
+  }
+}
+
+/* ---- Yedekle ---- */
+document.getElementById('export').addEventListener('click', ()=>{
+  const txt = JSON.stringify(items, null, 2);
+  mTitle.textContent = 'Yedek';
+  mNote.textContent = 'Aşağıdaki metni Kopyala ile alıp güvenli bir yere (Notlar, Dosyalar, mail) yapıştır. Geri yüklerken aynı metni kullanacaksın.';
+  mText.value = txt;
+  mText.readOnly = true;
+  mActions.innerHTML = '';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className='m-btn primary'; copyBtn.textContent='Kopyala';
+  copyBtn.addEventListener('click', async ()=>{
+    const ok = await copyText();
+    copyBtn.textContent = ok ? 'Kopyalandı ✓' : 'Metni seçip elle kopyala';
+    if(ok) setTimeout(()=>copyBtn.textContent='Kopyala', 1600);
+  });
+  mActions.appendChild(copyBtn);
+
+  const file = new File([txt], backupName(), {type:'application/json'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    const shareBtn = document.createElement('button');
+    shareBtn.className='m-btn ghost'; shareBtn.textContent='Paylaş / Kaydet';
+    shareBtn.addEventListener('click', async ()=>{
+      try{ await navigator.share({files:[file], title:'Dal Defteri Yedeği'}); }catch(e){}
+    });
+    mActions.appendChild(shareBtn);
+  }
+  overlay.hidden = false;
+});
+
+/* ---- Geri yükle ---- */
+const importFile = document.getElementById('importFile');
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  mTitle.textContent = 'Geri yükle';
+  mNote.textContent = 'Yedek metnini buraya yapıştır ve Yükle’ye bas. Ya da yedek dosyan varsa Dosya seç ile aç. Mevcut kayıtların silinmez, eksikler tamamlanır.';
+  mText.value = '';
+  mText.readOnly = false;
+  mText.placeholder = 'Yedek metnini buraya yapıştır…';
+  mActions.innerHTML = '';
+
+  const loadBtn = document.createElement('button');
+  loadBtn.className='m-btn primary'; loadBtn.textContent='Yükle';
+  loadBtn.addEventListener('click', ()=>{ if(applyImport(mText.value)) closeModal(); });
+  mActions.appendChild(loadBtn);
+
+  const fileBtn = document.createElement('button');
+  fileBtn.className='m-btn ghost'; fileBtn.textContent='Dosya seç';
+  fileBtn.addEventListener('click', ()=>importFile.click());
+  mActions.appendChild(fileBtn);
+
+  overlay.hidden = false;
+});
+
+importFile.addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ if(applyImport(reader.result)) closeModal(); importFile.value=''; };
+  reader.readAsText(file);
+});
+
+function applyImport(text){
+  let data;
+  try{ data = JSON.parse((text||'').trim()); }
+  catch(err){ alert('Metin okunamadı. Yedeğin tamamını yapıştırdığından emin ol.'); return false; }
+  if(!Array.isArray(data)){ alert('Geçersiz yedek.'); return false; }
+  const have = new Set(items.map(x=>x.id));
+  let added = 0;
+  data.forEach(it=>{
+    if(it && it.id && it.title && !have.has(it.id)){ items.push(it); have.add(it.id); added++; }
+  });
+  save(); render();
+  alert(added>0 ? `${added} kayıt geri yüklendi.` : 'Yeni kayıt yoktu — hepsi zaten mevcuttu.');
+  return true;
+}
+
+(async function init(){
+  items = await load();
+  render();
+  titleEl.focus();
+})();
+</script>
+</body>
+</html>
