@@ -110,12 +110,14 @@
   /* ---- Card ---- */
   .card{
     background:var(--paper-2);border:1px solid var(--line);border-radius:14px;
+    border-left:3px solid transparent;
     padding:13px 14px;margin-bottom:9px;box-shadow:var(--shadow);
     animation:pop .18s ease;
   }
   @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-  .card.block{border-left:3px solid var(--temel)}
-  .card.doing{border-left:3px solid var(--merak)}
+  .card.type-temel{border-left-color:var(--temel)}
+  .card.type-merak{border-left-color:var(--merak)}
+  .card.type-ek{border-left-color:var(--ek)}
   .card.done{opacity:.55}
   .c-top{display:flex;align-items:flex-start;gap:9px}
   .chip{
@@ -154,6 +156,50 @@
   .act.close{color:var(--ek);border-color:var(--ek-bg)}
   .act.del{margin-left:auto;color:#B9857E}
   .act.del:hover{color:var(--temel);border-color:var(--temel-bg)}
+
+  /* ---- Alt dallar ---- */
+  .subs{
+    margin-top:12px;padding-left:14px;margin-left:2px;
+    border-left:2px solid var(--temel-bg);
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .subcard{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;
+  }
+  .subcard.done{opacity:.5}
+  .subcard.done .sub-title{text-decoration:line-through}
+  .subcard .branch{color:#C7BFB4;font-size:13px;flex:none}
+  .subcard .chip{margin-top:0}
+  .sub-title{font-size:14px;font-weight:500;flex:1;min-width:100px;word-break:break-word}
+  .sub-acts{display:flex;gap:5px;margin-left:auto}
+  .act.mini{font-size:11.5px;padding:3px 9px;border-radius:7px}
+  .act.mini.del{margin-left:0}
+  .subbtn{
+    align-self:flex-start;color:var(--temel);border-color:var(--temel-bg);
+    background:var(--temel-bg);font-weight:600;
+  }
+  .subbtn:hover{border-color:var(--temel);color:var(--temel)}
+  .subform{
+    background:var(--paper);border:1px dashed var(--temel-bg);
+    border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:9px;
+  }
+  .subinput{
+    border:none;background:transparent;font-family:inherit;font-size:14px;
+    color:var(--ink);padding:2px;
+  }
+  .subinput:focus{outline:none}
+  .subtypes{display:flex;gap:6px}
+  .subtype{
+    font-family:inherit;font-size:11.5px;font-weight:500;cursor:pointer;
+    border:1px solid var(--line);background:transparent;color:var(--muted);
+    padding:4px 10px;border-radius:99px;transition:all .12s;
+  }
+  .subtype[data-st=temel].on{background:var(--temel-bg);border-color:var(--temel);color:var(--temel)}
+  .subtype[data-st=merak].on{background:var(--merak-bg);border-color:var(--merak);color:var(--merak)}
+  .subtype[data-st=ek].on{background:var(--ek-bg);border-color:var(--ek);color:var(--ek)}
+  .subform-acts{display:flex;gap:6px}
 
   /* ---- Empty ---- */
   .empty{
@@ -271,6 +317,8 @@ let items = [];
 let pickedType = 'merak';
 let statusFilter = 'acik';   // acik | kapanan | hepsi
 let typeFilter = null;        // null | temel | merak | ek
+let addingSubFor = null;      // hangi kökün alt dal formu açık
+let subType = 'ek';           // alt dal türü (varsayılan ek)
 
 /* Saklama: Claude içindeyken kalıcı depo (window.storage),
    tarayıcıya kaydedince cihaz hafızası (localStorage). */
@@ -352,7 +400,16 @@ function advance(id){
   else { it.progress=p; }
   save(); render();
 }
-function del(id){ items=items.filter(x=>x.id!==id); save(); render(); }
+function del(id){ items=items.filter(x=>x.id!==id && x.parentId!==id); save(); render(); }
+
+function childrenOf(id){ return items.filter(x=>x.parentId===id); }
+
+function addSub(parentId, title){
+  const t=(title||'').trim(); if(!t) return;
+  items.push({ id:uid(), title:t, ctx:'', type:subType, status:'acik',
+               created:Date.now(), parentId, progress:0 });
+  addingSubFor=null; save(); render();
+}
 
 /* ---- render ---- */
 function passesFilter(it){
@@ -363,9 +420,9 @@ function passesFilter(it){
 }
 
 function cardHTML(it){
-  const cls = it.status==='kapandi' ? 'done'
-            : it.status==='calisiyor' ? 'doing'
-            : (it.type==='temel' ? 'block' : '');
+  const cls = (it.status==='kapandi' ? 'done'
+            : it.status==='calisiyor' ? 'doing' : '')
+            + ' type-' + it.type;
   const ctx = it.ctx
     ? `<div class="c-ctx"><span class="branch">↳</span><span><b>${esc(it.ctx)}</b> çalışırken</span></div>` : '';
   const p = it.progress || 0;
@@ -386,6 +443,39 @@ function cardHTML(it){
   }
   const doneMeta = it.status==='kapandi' && p>=100 ? ' · tamamlandı ✓'
                  : it.status==='calisiyor' ? ' · çalışılıyor' : '';
+
+  // Alt dallar: yalnızca üst düzey (parentId yok) Temel köklerde
+  let subs = '';
+  const isRoot = it.type==='temel' && !it.parentId;
+  if(isRoot && it.status!=='kapandi'){
+    const kids = childrenOf(it.id).filter(c=>{
+      if(statusFilter==='acik') return c.status!=='kapandi';
+      if(statusFilter==='kapanan') return c.status==='kapandi';
+      return true;
+    });
+    const kidsHTML = kids.map(subCardHTML).join('');
+    const form = addingSubFor===it.id
+      ? `<div class="subform">
+           <input type="text" class="subinput" id="subinput" data-parent="${it.id}"
+                  placeholder="${esc(it.title)}'in alt dalı… (ör. ilgili bir yan konu)" autocomplete="off">
+           <div class="subtypes">
+             <button class="subtype${subType==='temel'?' on':''}" data-st="temel">Temel</button>
+             <button class="subtype${subType==='merak'?' on':''}" data-st="merak">Merak</button>
+             <button class="subtype${subType==='ek'?' on':''}" data-st="ek">Ek</button>
+           </div>
+           <div class="subform-acts">
+             <button class="act go" data-a="subadd" data-parent="${it.id}">Ekle</button>
+             <button class="act" data-a="subcancel">Vazgeç</button>
+           </div>
+         </div>`
+      : `<button class="act subbtn" data-a="subopen" data-parent="${it.id}">+ Alt dal</button>`;
+    subs = `<div class="subs">${kidsHTML}${form}</div>`;
+  } else if(isRoot){
+    // kapanmış kök: alt dallarını salt görüntüle
+    const kids = childrenOf(it.id).map(subCardHTML).join('');
+    if(kids) subs = `<div class="subs">${kids}</div>`;
+  }
+
   return `<div class="card ${cls}" data-id="${it.id}">
     <div class="c-top">
       <span class="chip ${it.type}">${TYPE_LABEL[it.type]}</span>
@@ -395,6 +485,20 @@ function cardHTML(it){
     ${prog}
     <div class="c-meta">${fmtDate(it.created)}${doneMeta}</div>
     <div class="c-actions">${acts}<button class="act del" data-a="del">Sil</button></div>
+    ${subs}
+  </div>`;
+}
+
+function subCardHTML(c){
+  const done = c.status==='kapandi';
+  const act = done
+    ? `<button class="act mini" data-a="acik">Aç</button>`
+    : `<button class="act mini close" data-a="kapandi">Kapat</button>`;
+  return `<div class="subcard ${done?'done':''}" data-id="${c.id}">
+    <span class="branch">↳</span>
+    <span class="chip ${c.type}">${TYPE_LABEL[c.type]}</span>
+    <span class="sub-title">${esc(c.title)}</span>
+    <span class="sub-acts">${act}<button class="act mini del" data-a="del">Sil</button></span>
   </div>`;
 }
 
@@ -404,8 +508,9 @@ function render(){
   renderCounts();
   const list = document.getElementById('list');
   const shown = items.filter(passesFilter);
+  const top = shown.filter(i=>!i.parentId);
 
-  if(shown.length===0){
+  if(top.length===0){
     list.innerHTML = `<div class="empty">
       <div class="big">${items.length===0?'Defter boş':'Bu filtrede dal yok'}</div>
       <p>${items.length===0
@@ -418,8 +523,8 @@ function render(){
   // kök blokları önce (yalnızca açık görünümde ayrı başlıkla)
   let html='';
   if(statusFilter==='acik' && !typeFilter){
-    const blockers = shown.filter(i=>i.type==='temel' && i.status!=='kapandi');
-    const rest = shown.filter(i=>!(i.type==='temel' && i.status!=='kapandi'));
+    const blockers = top.filter(i=>i.type==='temel' && i.status!=='kapandi');
+    const rest = top.filter(i=>!(i.type==='temel' && i.status!=='kapandi'));
     if(blockers.length){
       html += `<div class="sec"><span class="kbadge">KÖK</span> Önce bunlar çözülmeli</div>`;
       html += blockers.map(cardHTML).join('');
@@ -429,23 +534,53 @@ function render(){
       html += rest.map(cardHTML).join('');
     }
   } else {
-    html = shown.map(cardHTML).join('');
+    html = top.map(cardHTML).join('');
   }
   list.innerHTML = html;
+
+  if(addingSubFor){
+    const el = document.getElementById('subinput');
+    if(el) el.focus();
+  }
 }
 
 document.getElementById('list').addEventListener('click', e=>{
+  // alt dal tür seçimi (yeniden render etmeden)
+  const st = e.target.closest('.subtype');
+  if(st){
+    subType = st.dataset.st;
+    st.parentNode.querySelectorAll('.subtype').forEach(x=>x.classList.toggle('on', x===st));
+    return;
+  }
   const b = e.target.closest('.act'); if(!b) return;
-  const id = b.closest('.card').dataset.id;
   const a = b.dataset.a;
+
+  if(a==='subopen'){ addingSubFor = b.dataset.parent; subType='ek'; render(); return; }
+  if(a==='subcancel'){ addingSubFor = null; render(); return; }
+  if(a==='subadd'){
+    const inp = document.getElementById('subinput');
+    addSub(b.dataset.parent, inp ? inp.value : '');
+    return;
+  }
+
+  // alt kart mı, ana kart mı?
+  const sub = b.closest('.subcard');
+  const id = sub ? sub.dataset.id : b.closest('.card').dataset.id;
   if(a==='del'){ del(id); }
   else if(a==='ilerle'){ advance(id); }
   else { setStatus(id, a); }
 });
 
+document.getElementById('list').addEventListener('keydown', e=>{
+  if(e.target.classList && e.target.classList.contains('subinput') && e.key==='Enter'){
+    e.preventDefault();
+    addSub(e.target.dataset.parent, e.target.value);
+  }
+});
+
 function renderCounts(){
   const open = items.filter(i=>i.status!=='kapandi');
-  const roots = open.filter(i=>i.type==='temel').length;
+  const roots = open.filter(i=>i.type==='temel' && !i.parentId).length;
   const doing = items.filter(i=>i.status==='calisiyor').length;
   const el = document.getElementById('counts');
   el.innerHTML =
